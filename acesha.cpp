@@ -16,14 +16,17 @@ ACE_TMAIN(int argc, ACE_TCHAR* argv[]){
      ){
 	unsigned char  hash[EVP_MAX_MD_SIZE];
 	unsigned int lengthOfHash =0;
-	
+
 	if(EVP_DigestFinal_ex(context, hash, &lengthOfHash)){
-	  for(int i = 0 ; i< lengthOfHash; i++){
+
+	  if(hash[0] == 0x80){
+	    for(int i = 0 ; i< lengthOfHash; i++){
+	      ACE_DEBUG((LM_INFO,
+			 "%x", hash[i]));
+	    }
 	    ACE_DEBUG((LM_INFO,
-		       "%x", hash[i]));
+		       "\n"));
 	  }
-	  ACE_DEBUG((LM_INFO,
-		     "\n"));
 	}
   }
 
