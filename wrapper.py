@@ -4,4 +4,4 @@ import os
 while True:
     cmd = './ace0 {}'.format(uuid.uuid4())
     os.popen(cmd)
-    time.sleep(1)
+    time.sleep(0.01)

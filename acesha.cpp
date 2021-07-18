@@ -11,7 +11,7 @@ ACE_TMAIN(int argc, ACE_TCHAR* argv[]){
   EVP_MD_CTX* context = EVP_MD_CTX_new();
   
   if((context!= NULL) &&
-     EVP_DigestInit_ex(context, EVP_sha3_256(), NULL) &&
+     EVP_DigestInit_ex(context, EVP_sha3_512(), NULL) &&
      EVP_DigestUpdate(context, s0->c_str(), s0->length())
      ){
 	unsigned char  hash[EVP_MAX_MD_SIZE];
@@ -19,10 +19,10 @@ ACE_TMAIN(int argc, ACE_TCHAR* argv[]){
 
 	if(EVP_DigestFinal_ex(context, hash, &lengthOfHash)){
 
-	  if(hash[0] == 0x80){
+	  if((hash[0]&0xf0) == 0xf0){
 	    for(int i = 0 ; i< lengthOfHash; i++){
 	      ACE_DEBUG((LM_INFO,
-			 "%x", hash[i]));
+			 "%02x", hash[i]));
 	    }
 	    ACE_DEBUG((LM_INFO,
 		       "\n"));
