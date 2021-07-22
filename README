@@ -1,0 +1,17 @@
+#blocks_view
+#transactions_view
+#notes_view
+
+#peers
+#seeds
+
+#Genesis blocks
+1) 'In God We Trust'
+2) 'This far you may come, but no farther, And here your proud waves must stop!'
+3) 'I am the Alpha and the Omega, the Beginning and the End'
+
+
+22820 GOSSIP_PORT
+22821 TXN_PORT
+22822 BLOCK_PORT
+22823 MINING_PORT
