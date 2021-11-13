@@ -2,10 +2,10 @@
 create table data_ring(row_id uuid primary key, clique int, sink text, lambda text, rangeFrom text, rangeTo text);
 create custom index data_ring_clique on data_ring(clique) USING 'org.apache.cassandra.index.sasi.SASIIndex';
 insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 0, 'cassandra://cluster1', ' & 0xffffffff', '0x0', '0x100000000');
-insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 32, 'mysql://mysql1', ' >>32 & 0xffffffff', '0x0', '0x80000000');
-insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 32, 'mysql://mysql2', ' >>32 & 0xffffffff', '0x80000000', '0x100000000');
-insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 64, 'postgresql://pg1', '>>64 & 0xffffffff', '0x0', '0x80000000');
-insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 64, 'postgresql://pg2', '>>64 & 0xffffffff', '0x80000000', '0x100000000');
+--insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 32, 'mysql://mysql1', ' >>32 & 0xffffffff', '0x0', '0x80000000');
+--insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 32, 'mysql://mysql2', ' >>32 & 0xffffffff', '0x80000000', '0x100000000');
+--insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 64, 'postgresql://pg1', '>>64 & 0xffffffff', '0x0', '0x80000000');
+--insert into data_ring(row_id, clique, sink, lambda, rangeFrom, rangeTo) values (now(), 64, 'postgresql://pg2', '>>64 & 0xffffffff', '0x80000000', '0x100000000');
 
 
 create table
@@ -47,3 +47,12 @@ create custom index notes_view_note_symbol on notes_view(symbol)  USING 'org.apa
 create custom index notes_view_note_quantity on notes_view(quantity)  USING 'org.apache.cassandra.index.sasi.SASIIndex';
 create custom index notes_view_note_holder on notes_view(holder)  USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = {'mode': 'CONTAINS', 'analyzer_class': 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer', 'case_sensitive': 'true'};
 
+
+
+create table draft(sha256_id text primary key, note_id text, ver bigint,
+symbol text, quantity bigint, target text, refer text
+);
+
+create table candidate(sha256_id text primary key, proposal text, ver bigint,
+pq text, verdict text, target text, refer text
+);
