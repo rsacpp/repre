@@ -15,10 +15,10 @@ class CassandraAware:
 
     def init__(self):
         self.cluster = Cluster("", protocol_version=4,
-                          load_balancing_policy=DCAwareRoundRobinPolicy(local_dc='datacenter1'))
+                               load_balancing_policy=DCAwareRoundRobinPolicy(local_dc='datacenter1'))
         self.session = self.cluster.connect("")
 
-                
+
 class KazooAware:
 
     def __init__(self):
@@ -36,11 +36,11 @@ class blocks_view(CassandraAware, KazooAware):
         values(?, ?, ?, ?, ?, ?, ?, ?, ? toTimestamp(now()))''')
         self.updateStatusStatement = super.session.prepare('update candidate set processed=true where sha256_id = ?')
         self.genesis()
-        
+
     def runLoop(self):
         while True:
             self.run()
-            
+
     def publicMining(self, raw):
         ver = super.ver
         super.ver += 1
@@ -65,17 +65,17 @@ class blocks_view(CassandraAware, KazooAware):
         self.counter += 1
         super.session.execute(self.updateBlock, [sha256_id, block_id, ver, raw, sha256, nonce,
                                                  'Mersenne15Mersenne14', predecessor, self.counter])
-                
-    def genesis (self):
+
+    def genesis(self):
         self.counter = 0
         self.block_id = None
         raw = '''
         In God We Trust
         '''
         self.publicMining(raw)
-    
+
     def run(self):
-        rows = super.session.execute('''select sha256_id, pq, proposal, verdict, target, raw_statement, block_id 
+        rows = super.session.execute('''select sha256_id, pq, proposal, verdict, target, raw_statement, block_id
         from candidate where ready = true and processed = false''')
         candidates = []
         ids = []
@@ -87,11 +87,12 @@ class blocks_view(CassandraAware, KazooAware):
         candidates.sort()
         candidate_transactions = '@@'.join(candidates)
         predecessor = self.block_id
-        raw = '<{0}/{1}/{2}>{3}'.format(self.block_ptr, self.nonce, predecessor , candidate_transactions)
+        raw = '<{0}/{1}/{2}>{3}'.format(self.block_ptr, self.nonce, predecessor, candidate_transactions)
         self.publicMining(raw)
-        
+
         for shaId in ids:
             super.session.execute(self.updateStatusStatement, [shaId])
+
 
 '''
 create table
@@ -108,7 +109,7 @@ class player3(CassandraAware, KazooAware):
         insert into player3(sha256_id, symbol, ver, pq0, d0, f0, pq1, d1, f1, setup)
         values(?, ?, ?, ?, ?, ?, ?, ?, ?, toTimestamp(now()))
         ''')
-    
+
     def new(self, symbol):
         ver = super.ver
         super.ver += 1
@@ -119,7 +120,7 @@ class player3(CassandraAware, KazooAware):
         with Popen('./openssl genrsa 2048 {0}'.format(sha256_id).split(' '), stdout=PIPE) as p:
             output = str(p.stdout.read(), 'utf-8')
             for row in output.split('INTEGER'):
-                numbers.extend(list(filter(lambda x:x.startswith('           :'), row.splitlines())))
+                numbers.extend(list(filter(lambda x: x.startswith('           :'), row.splitlines())))
         pqKey = ''.join(reversed(numbers[1])).lower().replace(':', '')
         dKey = ''.join(reversed(numbers[3])).lower().replace(':', '')
         jgKey = ''.join(reversed(numbers[-1])).lower().replace(':', '')
@@ -130,14 +131,15 @@ class player3(CassandraAware, KazooAware):
         with Popen('./openssl genrsa 2048 {0}'.format(sha256_id).split(' '), stdout=PIPE) as p:
             output = str(p.stdout.read(), 'utf-8')
             for row in output.split('INTEGER'):
-                numbers.extend(list(filter(lambda x:x.startswith('           :'), row.splitlines())))
+                numbers.extend(list(filter(lambda x: x.startswith('           :'), row.splitlines())))
         pqKey = ''.join(reversed(numbers[1])).lower().replace(':', '')
         dKey = ''.join(reversed(numbers[3])).lower().replace(':', '')
         jgKey = ''.join(reversed(numbers[-1])).lower().replace(':', '')
         pq1 = pqKey.strip()
         d1 = dKey.strip()
-        f1 = jgKey.strip()            
-        super.session.execute(self.newPlayer, [sha256_id, symbol, ver, pq0, d0, f0, pq1, d1, f1]);
+        f1 = jgKey.strip()
+        super.session.execute(self.newPlayer, [sha256_id, symbol, ver, pq0, d0, f0, pq1, d1, f1])
+
 
 '''
 create table draft(sha256_id text primary key, note_id text, target text, ver bigint,
@@ -158,9 +160,9 @@ class draft(CassandraAware, KazooAware):
         ''')
         self.updateSymbolChain = super.session.prepare('''
         update symbol_chain set  symbol =? , ver= ?, block_counter= ?, updated = toTimestamp(now()
-        where sha256_id = ? 
+        where sha256_id = ?
         ''')
-           
+
     def issue(self, symbol, quantity):
         logging.info('going to issue with symbol:{}'.format(symbol))
         ver = super.ver
@@ -179,7 +181,7 @@ class draft(CassandraAware, KazooAware):
         m.update(bytes(block_id, 'utf-8'))
         note_id = '{}||{}||{}'.format(symbol, m.hexdigest()[:32], quantity)
         super.session.execute(self.newDraft, [m.hexdigest(), note_id[:32], sha256_id, ver, quantity, block_id, 'issue'])
-    
+
     def transfer(self, note_id, target, quantity, refer):
         logging.info('going to transfer {} to {}'.format(note_id, target))
         ver = super.ver
@@ -195,11 +197,11 @@ class proposal(CassandraAware, KazooAware):
 
     def __init__(self):
         logging.info('initialize proposal')
-        
+
     def runLoop(self):
         while True:
             self.process()
-            
+
     def process(self):
         result = super.session.execute('''
         select sha256_id, note_id, target, symbol, quantity, refer from draft where processed=false
