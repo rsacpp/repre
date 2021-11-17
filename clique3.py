@@ -178,8 +178,7 @@ class draft(CassandraAware, KazooAware):
         counter += 1
         super.session.execute(self.updateSymbolChain, [symbol, ver, counter, sha256_id])
         (block_id) = super.session.execute('select sha256_id from blocks_view where counter = {}'.format(counter)).one()
-        m.update(bytes(block_id, 'utf-8'))
-        note_id = '{}||{}||{}'.format(symbol, m.hexdigest()[:32], quantity)
+        note_id = '{}||{}||{}'.format(symbol, block_id[:16], quantity)
         super.session.execute(self.newDraft, [m.hexdigest(), note_id[:32], sha256_id, ver, quantity, block_id, 'issue'])
 
     def transfer(self, note_id, target, quantity, refer):
