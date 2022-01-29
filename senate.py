@@ -102,9 +102,10 @@ class Senate(socketserver.BaseRequestHandler):
         stmt = """select pq from credential"""
         self.cur.execute(stmt)
         [senatePq] = self.cur.fetchone()
-
-        # ^^SenatePQ||EncryptedPQ||EncryptedD$$
-        return '^^{0}||{1}||{2}$$'.format(senatePq, encryptedPq, encryptedD)
+        if senatePq:
+            return '^^{0}||{1}||{2}$$'.format(senatePq, encryptedPq, encryptedD)
+        else:
+            return '^^$$'
 
 
 class SenateHandler(socketserver.BaseRequestHandler):
@@ -117,6 +118,7 @@ class SenateHandler(socketserver.BaseRequestHandler):
         (code, arg) = payload.split('==>')
         if code == 'RequestID':
             p = Process(target=self.senate.requestID, args=arg)
+            p.start()
         # return the new id
         if code == 'FetchID':
             output = self.senate.fetchID(arg)
@@ -125,12 +127,10 @@ class SenateHandler(socketserver.BaseRequestHandler):
             self.request.send(bytes('{:08}'.format(length), 'utf-8'))
             # send the payload
             self.request.send(bytes(output, 'utf-8'))
-            return
         if code == 'Proposal':
             pass
         if code == 'RawBlock':
             pass
-        p.start()
 
 
 if __name__ == '__main__':
