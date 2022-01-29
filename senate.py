@@ -5,6 +5,8 @@ import socketserver
 from multiprocessing import Process
 from subprocess import Popen, PIPE
 
+transf = lambda x: ''.join(reversed(x)).lower().replace(':', '')
+
 
 class Senate(socketserver.BaseRequestHandler):
     def __init__(self, bootstrap):
@@ -27,15 +29,16 @@ class Senate(socketserver.BaseRequestHandler):
 
         # senate keys
         bns = []
-        cmd = '/usr/bin/openssl', 'genrsa', '4096'
+        cmd = '/usr/bin/openssl', 'genrsa', '3072'
         parseCmd = '/usr/bin/openssl', 'asn1parse'
+
         with Popen(cmd, stdout=PIPE) as p:
             with Popen(parseCmd, stdin=PIPE, stdout=PIPE) as p2:
                 output = str(p2.communicate(input=p.stdout.read())[0], 'utf-8')
                 for a in output.split('INTEGER'):
                     bns.extend(list(filter(lambda x: x.startswith("           :"), a.splitlines())))
-                senatePq = ''.join(reversed(bns[1])).lower().replace(':', '')
-                senateD = ''.join(reversed(bns[3])).lower().replace(':', '')
+                senatePq = transf(bns[1])
+                senateD = transf(bns[3])
                 cur.execute("""
                 insert into credential(pq, d, e) values('{0}', '{1}', '{2}')
                 """.format(senatePq, senateD, '10001'))
@@ -53,9 +56,9 @@ class Senate(socketserver.BaseRequestHandler):
                 output = str(p2.communicate(input=p.stdout.read())[0], 'utf-8')
                 for a in output.split('INTEGER'):
                     bns.extend(list(filter(lambda x: x.startswith("           :"), a.splitlines())))
-                pqKey = ''.join(reversed(bns[1])).lower().replace(':', '')
-                dKey = ''.join(reversed(bns[3])).lower().replace(':', '')
-                jgKey = ''.join(reversed(bns[-1])).lower().replace(':', '')
+                pqKey = transf(bns[1])
+                dKey = transf(bns[3])
+                jgKey = transf(bns[-1])
         pqKey = pqKey.strip()
         dKey = dKey.strip()
         jgKey = jgKey.strip()
