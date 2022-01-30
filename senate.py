@@ -9,7 +9,7 @@ import logging
 transf = lambda x: ''.join(reversed(x)).lower().replace(':', '').strip()
 
 
-class Senate(socketserver.BaseRequestHandler):
+class Senate:
     def __init__(self, bootstrap):
         if bootstrap:
             self.bootstrap()
@@ -52,6 +52,7 @@ class Senate(socketserver.BaseRequestHandler):
                 con.close()
 
     def requestID(self, local_pq):
+        logging.debug('local_pq={}'.format(local_pq))
         cmd = './openssl', 'genrsa', '2048'
         parseCmd = '/usr/bin/openssl', 'asn1parse'
         output = ''
@@ -110,27 +111,24 @@ class Senate(socketserver.BaseRequestHandler):
         self.cur.execute(stmt)
         [senatePq] = self.cur.fetchone()
         if senatePq:
-            return '^^{0}||{1}||{2}$$'.format(senatePq, encryptedPq, encryptedD)
+            return '^{0}||{1}||{2}$'.format(senatePq, encryptedPq, encryptedD)
         else:
-            return '^^$$'
+            return '^$'
 
 
 class SenateHandler(socketserver.BaseRequestHandler):
-    def __init__(self):
-        self.senate = Senate()
-
     def handle(self):
         length = int(str(self.request.recv(8).strip(), 'utf-8'))
         payload = str(self.request.recv(length).strip(), 'utf-8')
         (code, arg) = payload.split('==>')
-        logging.info('{0}==>{1}'.format(code, arg))
+        logging.debug('{0}==>{1}'.format(code, arg))
         if code == 'RequestID':
-            p = Process(target=self.senate.requestID, args=arg)
+            p = Process(target=senate.requestID, args=(arg,))
             p.start()
         # return the new id
         if code == 'FetchID':
-            output = self.senate.fetchID(arg)
-            logging.info('output = {0}'.format(output))
+            output = senate.fetchID(arg)
+            logging.debug('output = {0}'.format(output))
             length = len(output)
             # send the length
             self.request.send(bytes('{:08}'.format(length), 'utf-8'))
@@ -144,13 +142,13 @@ class SenateHandler(socketserver.BaseRequestHandler):
 
 if __name__ == '__main__':
     fmt0 = "%(name)s %(levelname)s %(asctime)-15s %(process)d/\
-    %(thread)d %(pathname)s:%(lineno)s %(message)s"
-    logging.basicConfig(filename='senate.log', format=fmt0,
-                        level=logging.INFO)
+%(thread)d %(pathname)s:%(lineno)s %(message)s"
+    logging.basicConfig(filename='senate-debug.log', format=fmt0,
+                        level=logging.DEBUG)
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--bootstrap', action='store_true')
     args = parser.parse_args()
-    s = Senate(args.bootstrap)
+    senate = Senate(args.bootstrap)
 
     host, port = 'localhost', 12821
     with socketserver.TCPServer((host, port), SenateHandler) as server:
