@@ -10,11 +10,33 @@ transf = lambda x: ''.join(reversed(x)).lower().replace(':', '').strip()
 
 
 class Senate:
+    def genNumbers(self, bits, e):
+        bns = []
+        if e == '10001':
+            cmd = '/usr/bin/openssl', 'genrsa', '{0}'.format(bits)
+        if e == '30001':
+            cmd = './openssl', 'genrsa', '{0}'.format(bits)
+        parseCmd = '/usr/bin/openssl', 'asn1parse'
+        with Popen(cmd, stdout=PIPE) as p:
+            with Popen(parseCmd, stdin=PIPE, stdout=PIPE) as p2:
+                output = str(p2.communicate(input=p.stdout.read())[0], 'utf-8')
+                for a in output.split('INTEGER'):
+                    bns.extend(list(filter(lambda x: x.startswith("           :"), a.splitlines())))
+                pq = transf(bns[1])
+                d = transf(bns[3])
+                jgKey = transf(bns[-1])
+                return pq, d, jgKey
+
     def __init__(self, bootstrap):
         if bootstrap:
             self.bootstrap()
         self.con = sqlite3.connect('senate.db')
         self.cur = self.con.cursor()
+
+    def calc(self, pq, factor, val):
+        cmd = './crypt', pq, factor, val
+        with Popen(cmd, stdout=PIPE) as p:
+            return str(p.stdout.read().strip(), 'utf-8')
 
     def bootstrap(self):
         con = sqlite3.connect('senate.db')
@@ -34,38 +56,16 @@ class Senate:
         ''')
 
         # senate keys
-        bns = []
-        cmd = '/usr/bin/openssl', 'genrsa', '3072'
-        parseCmd = '/usr/bin/openssl', 'asn1parse'
-
-        with Popen(cmd, stdout=PIPE) as p:
-            with Popen(parseCmd, stdin=PIPE, stdout=PIPE) as p2:
-                output = str(p2.communicate(input=p.stdout.read())[0], 'utf-8')
-                for a in output.split('INTEGER'):
-                    bns.extend(list(filter(lambda x: x.startswith("           :"), a.splitlines())))
-                senatePq = transf(bns[1])
-                senateD = transf(bns[3])
-                cur.execute("""
-                insert into credential(pq, d, e) values('{0}', '{1}', '{2}')
-                """.format(senatePq, senateD, '10001'))
-                con.commit()
-                con.close()
+        senatePq, senateD = self.genNumbers(3072, '10001')[:2]
+        cur.execute("""
+        insert into credential(pq, d, e) values('{0}', '{1}', '{2}')
+        """.format(senatePq, senateD, '10001'))
+        con.commit()
+        con.close()
 
     def requestID(self, local_pq):
         logging.debug('local_pq={}'.format(local_pq))
-        cmd = './openssl', 'genrsa', '2048'
-        parseCmd = '/usr/bin/openssl', 'asn1parse'
-        output = ''
-        pqKey, dKey, jgKey = '', '', ''
-        bns = []
-        with Popen(cmd, stdout=PIPE) as p:
-            with Popen(parseCmd, stdin=PIPE, stdout=PIPE) as p2:
-                output = str(p2.communicate(input=p.stdout.read())[0], 'utf-8')
-                for a in output.split('INTEGER'):
-                    bns.extend(list(filter(lambda x: x.startswith("           :"), a.splitlines())))
-                pqKey = transf(bns[1])
-                dKey = transf(bns[3])
-                jgKey = transf(bns[-1])
+        pqKey, dKey, jgKey = self.genNumbers(2048, '30001')
         self.cur.execute("""
         insert into pal(pq, f, e, local_pq, local_e)
         values('{0}','{1}','{2}','{3}','{4}')
@@ -76,21 +76,14 @@ class Senate:
         [senatePq, senateD] = self.cur.fetchone()
         encryptedPq, encryptedD = '', ''
         # local public sign
-        encrypt = './crypt', local_pq, '10001', pqKey
-        with Popen(encrypt, stdout=PIPE) as p:
-            encryptedPq = str(p.stdout.read().strip(), 'utf-8')
+        encryptedPq = self.calc(local_pq, '10001', pqKey)
         # senate private sign
-        encrypt = './crypt', senatePq, senateD, encryptedPq
-        with Popen(encrypt, stdout=PIPE) as p:
-            encryptedPq = str(p.stdout.read().strip(), 'utf-8')
+        encryptedPq = self.calc(senatePq, senateD, encryptedPq)
+
         # local public sign
-        encrypt = './crypt', local_pq, '10001', dKey
-        with Popen(encrypt, stdout=PIPE) as p:
-            encryptedD = str(p.stdout.read().strip(), 'utf-8')
+        encryptedD = self.calc(local_pq, '10001', dKey)
         # senate private sign
-        encrypt = './crypt', senatePq, senateD, encryptedD
-        with Popen(encrypt, stdout=PIPE) as p:
-            encryptedD = str(p.stdout.read().strip(), 'utf-8')
+        encryptedD = self.calc(senatePq, senateD, encryptedD)
         # local_pq for retrieval
         self.cur.execute("""
         insert into local(pq, d, local_pq) values ('{0}', '{1}', '{2}')
