@@ -5,7 +5,7 @@ import socketserver
 from multiprocessing import Process
 from subprocess import Popen, PIPE
 
-transf = lambda x: ''.join(reversed(x)).lower().replace(':', '')
+transf = lambda x: ''.join(reversed(x)).lower().replace(':', '').strip()
 
 
 class Senate(socketserver.BaseRequestHandler):
@@ -25,7 +25,12 @@ class Senate(socketserver.BaseRequestHandler):
         # table1: pal
         cur.execute('''
         CREATE TABLE pal(pq text primary key, f text, e text,
-        local_pq text, local_e text)''')
+        local_pq text, local_e text)
+        ''')
+        # table2: local
+        cur.execute('''
+        CREATE TABLE local(local_pq text primary key, pq text, d text)
+        ''')
 
         # senate keys
         bns = []
@@ -59,30 +64,28 @@ class Senate(socketserver.BaseRequestHandler):
                 pqKey = transf(bns[1])
                 dKey = transf(bns[3])
                 jgKey = transf(bns[-1])
-        pqKey = pqKey.strip()
-        dKey = dKey.strip()
-        jgKey = jgKey.strip()
-
         self.cur.execute("""
         insert into pal(pq, f, e, local_pq, local_e)
-        values('{0}','{1}','{2}','{3}','{4}','{5}')
-        """.format(pqKey, jgKey, '11001', local_pq, '10001'))
+        values('{0}','{1}','{2}','{3}','{4}')
+        """.format(pqKey, jgKey, '30001', local_pq, '10001'))
 
         stmt = """select pq, d from credential"""
         self.cur.execute(stmt)
         [senatePq, senateD] = self.cur.fetchone()
         encryptedPq, encryptedD = '', ''
-
+        # local public sign
         encrypt = './crypt', local_pq, '10001', pqKey
         with Popen(encrypt, stdout=PIPE) as p:
             encryptedPq = str(p.stdout.read().strip(), 'utf-8')
+        # senate private sign
         encrypt = './crypt', senatePq, senateD, encryptedPq
         with Popen(encrypt, stdout=PIPE) as p:
             encryptedPq = str(p.stdout.read().strip(), 'utf-8')
-
+        # local public sign
         encrypt = './crypt', local_pq, '10001', dKey
         with Popen(encrypt, stdout=PIPE) as p:
             encryptedD = str(p.stdout.read().strip(), 'utf-8')
+        # senate private sign
         encrypt = './crypt', senatePq, senateD, encryptedD
         with Popen(encrypt, stdout=PIPE) as p:
             encryptedD = str(p.stdout.read().strip(), 'utf-8')
@@ -95,7 +98,7 @@ class Senate(socketserver.BaseRequestHandler):
     def fetchID(self, local_pq):
         # encrypted*
         stmt = """
-        select pq, d from local where local_pq = '{0}' """.format(local_pq)
+        select pq, d from local where local_pq = '{0}' """.format(local_pq.strip())
         self.cur.execute(stmt)
         [encryptedPq, encryptedD] = self.cur.fetchone()
         if not encryptedPq:
