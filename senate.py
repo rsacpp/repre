@@ -4,6 +4,7 @@ import argparse
 import socketserver
 from multiprocessing import Process
 from subprocess import Popen, PIPE
+import logging
 
 transf = lambda x: ''.join(reversed(x)).lower().replace(':', '').strip()
 
@@ -122,12 +123,14 @@ class SenateHandler(socketserver.BaseRequestHandler):
         length = int(str(self.request.recv(8).strip(), 'utf-8'))
         payload = str(self.request.recv(length).strip(), 'utf-8')
         (code, arg) = payload.split('==>')
+        logging.info('{0}==>{1}'.format(code, arg))
         if code == 'RequestID':
             p = Process(target=self.senate.requestID, args=arg)
             p.start()
         # return the new id
         if code == 'FetchID':
             output = self.senate.fetchID(arg)
+            logging.info('output = {0}'.format(output))
             length = len(output)
             # send the length
             self.request.send(bytes('{:08}'.format(length), 'utf-8'))
@@ -140,6 +143,10 @@ class SenateHandler(socketserver.BaseRequestHandler):
 
 
 if __name__ == '__main__':
+    fmt0 = "%(name)s %(levelname)s %(asctime)-15s %(process)d/\
+    %(thread)d %(pathname)s:%(lineno)s %(message)s"
+    logging.basicConfig(filename='senate.log', format=fmt0,
+                        level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--bootstrap', action='store_true')
     args = parser.parse_args()
