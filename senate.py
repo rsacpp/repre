@@ -3,40 +3,16 @@ import sqlite3
 import argparse
 import socketserver
 from multiprocessing import Process
-from subprocess import Popen, PIPE
 import logging
-
-transf = lambda x: ''.join(reversed(x)).lower().replace(':', '').strip()
+import goorsa
 
 
 class Senate:
-    def genNumbers(self, bits, e):
-        bns = []
-        if e == '10001':
-            cmd = '/usr/bin/openssl', 'genrsa', '{0}'.format(bits)
-        if e == '30001':
-            cmd = './openssl', 'genrsa', '{0}'.format(bits)
-        parseCmd = '/usr/bin/openssl', 'asn1parse'
-        with Popen(cmd, stdout=PIPE) as p:
-            with Popen(parseCmd, stdin=PIPE, stdout=PIPE) as p2:
-                output = str(p2.communicate(input=p.stdout.read())[0], 'utf-8')
-                for a in output.split('INTEGER'):
-                    bns.extend(list(filter(lambda x: x.startswith("           :"), a.splitlines())))
-                pq = transf(bns[1])
-                d = transf(bns[3])
-                jgKey = transf(bns[-1])
-                return pq, d, jgKey
-
     def __init__(self, bootstrap):
         if bootstrap:
             self.bootstrap()
         self.con = sqlite3.connect('senate.db')
         self.cur = self.con.cursor()
-
-    def calc(self, pq, factor, val):
-        cmd = './crypt', pq, factor, val
-        with Popen(cmd, stdout=PIPE) as p:
-            return str(p.stdout.read().strip(), 'utf-8')
 
     def bootstrap(self):
         con = sqlite3.connect('senate.db')
@@ -56,7 +32,7 @@ class Senate:
         ''')
 
         # senate keys
-        senatePq, senateD = self.genNumbers(3072, '10001')[:2]
+        senatePq, senateD = goorsa.generateNumbers(3072, '10001')[:2]
         cur.execute("""
         insert into credential(pq, d, e) values('{0}', '{1}', '{2}')
         """.format(senatePq, senateD, '10001'))
@@ -65,7 +41,7 @@ class Senate:
 
     def requestID(self, local_pq):
         logging.debug('local_pq={}'.format(local_pq))
-        pqKey, dKey, jgKey = self.genNumbers(2048, '30001')
+        pqKey, dKey, jgKey = goorsa.generateNumbers(2048, '30001')
         self.cur.execute("""
         insert into pal(pq, f, e, local_pq, local_e)
         values('{0}','{1}','{2}','{3}','{4}')
@@ -76,14 +52,14 @@ class Senate:
         [senatePq, senateD] = self.cur.fetchone()
         encryptedPq, encryptedD = '', ''
         # local public sign
-        encryptedPq = self.calc(local_pq, '10001', pqKey)
+        encryptedPq = goorsa.calc(local_pq, '10001', pqKey)
         # senate private sign
-        encryptedPq = self.calc(senatePq, senateD, encryptedPq)
+        encryptedPq = goorsa.calc(senatePq, senateD, encryptedPq)
 
         # local public sign
-        encryptedD = self.calc(local_pq, '10001', dKey)
+        encryptedD = goorsa.calc(local_pq, '10001', dKey)
         # senate private sign
-        encryptedD = self.calc(senatePq, senateD, encryptedD)
+        encryptedD = goorsa.calc(senatePq, senateD, encryptedD)
         # local_pq for retrieval
         self.cur.execute("""
         insert into local(pq, d, local_pq) values ('{0}', '{1}', '{2}')
@@ -93,7 +69,8 @@ class Senate:
     def fetchID(self, local_pq):
         # encrypted*
         stmt = """
-        select pq, d from local where local_pq = '{0}' """.format(local_pq.strip())
+        select pq, d from local where local_pq = '{0}'
+        """.format(local_pq.strip())
         self.cur.execute(stmt)
         [encryptedPq, encryptedD] = self.cur.fetchone()
         if not encryptedPq:
