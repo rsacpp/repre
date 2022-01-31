@@ -2,13 +2,15 @@
 from subprocess import Popen, PIPE
 import hashlib
 import uuid
+import socket
+import time
 
 
 def transfer(text):
     return ''.join(reversed(text)).lower().replace(':', '').strip()
 
 
-def generateNumbers(self, bits, e):
+def generateNumbers(bits, e):
     bns = []
     if e == '10001':
         cmd = '/usr/bin/openssl', 'genrsa', '{0}'.format(bits)
@@ -48,10 +50,48 @@ def mining(dat, tag):
                 return randomhex, output
 
 
-def countF(self, dat):
+def countF(dat):
     counter = 0
     for c in dat:
         if c == 'f':
             counter += 1
         else:
             return counter
+
+
+def newRuntime(bits):
+    return generateNumbers(bits, '10001')[:2]
+
+
+def requstID(senate='senate.goorsa.com'):
+    runtimePq, runtimeD = newRuntime(2560)
+    dat = 'RequestID==>{0}'.format(runtimePq)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect((senate, 12821))
+        length = len(dat)
+        sock.send(bytes('{:08}'.format(length), 'utf-8'))
+        sock.send(bytes(dat, 'utf-8'))
+    # loop until ID is retrieved
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.connect((senate, 12821))
+            dat = 'FetchID==>{0}'.format(runtimePq)
+            length = len(dat)
+            sock.send(bytes('{:08}'.format(length), 'utf-8'))
+            sock.send(bytes(dat, 'utf-8'))
+            length = int(str(sock.recv(8).strip(), 'utf-8'))
+            payload = str(sock.recv(length).strip(), 'utf-8')
+            if payload == '^$':
+                time.sleep(8)
+            else:
+                [senatePq, encryptedPq, encryptedD] = payload.split('||')
+                senatePq = senatePq.split('^')[-1]
+                encryptedD = encryptedD.split('$')[0]
+
+                encryptedPq = calc(senatePq, '10001', encryptedPq)
+                clique3pq = calc(runtimePq, runtimeD, encryptedPq)
+
+                encryptedD = calc(senatePq, '10001', encryptedD)
+                clique3d = calc(runtimePq, runtimeD, encryptedD)
+                # total 6 numbers, first 3 for runtime, later 3 for clique3
+                return runtimePq, runtimeD, '10001', clique3pq, clique3d, '30001'
