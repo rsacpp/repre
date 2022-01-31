@@ -50,6 +50,13 @@ def mining(dat, tag):
                 return randomhex, output
 
 
+def verify(dat, nonce, final):
+    cmd = './mining' dat, nonce
+    with Popen(cmd, stdout=PIPE) as p:
+        output = p.stdout.read().strip()
+        return output == final
+
+
 def countF(dat):
     counter = 0
     for c in dat:
