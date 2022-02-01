@@ -17,23 +17,19 @@ class Senate:
     def bootstrap(self):
         con = sqlite3.connect('senate.db')
         cur = con.cursor()
-        # table0: credential
-        cur.execute('''
-        CREATE TABLE credential(pq text primary key, d text, e text)
-        ''')
-        # table1: pal
-        cur.execute('''
+        sqlStatements = """
+        CREATE TABLE credential(pq text primary key, d text, e text) //
+
         CREATE TABLE pal(pq text primary key, f text, e text,
-        local_pq text, local_e text)
-        ''')
-        # table2: local
-        cur.execute('''
-        CREATE TABLE local(local_pq text primary key, pq text, d text)
-        ''')
-        # table3: senator
-        cur.execute('''
+        local_pq text, local_e text) //
+
+        CREATE TABLE local(local_pq text primary key, pq text, d text) //
+
         CREATE TABLE senator(pq text primary key, d text, e text, encrypted_pq text)
-        ''')
+        """
+        for s in sqlStatements.split('//'):
+            logging.info('executing {0}'.format(s))
+            cur.execute(s)
         # senate keys
         senatePq, senateD = goorsa.generateNumbers(3072, '10001')[:2]
         cur.execute("""
