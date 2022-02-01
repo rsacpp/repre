@@ -16,15 +16,15 @@ class House:
         cur = con.cursor()
         statements = """
         CREATE TABLE block(sha256 text primary key, raw text, nonce text, final text, chain text, seq bigint,
-        transaction_count bigint, f_count bigint) //
+        transaction_count bigint, f_count bigint) ;
         CREATE TABLE chain(sha256 text primary key, refer text, refer_seq bigint, block_count bigint, transaction_count bigint, f_count bigint)
-        //
+        ;
         CREATE TABLE transaction(sha256 text primary key, verdict text, proposal text, raw text, block_refer text, transaction_refer text)
-        //
+        ;
         CREATE TABLE representative(runtime_pq text primary key, runtime_d text, runtime_e text, senator_pq text,
         clique3pq text, clique3d text, clique3e text)
         """
-        for s in statements.split('//'):
+        for s in statements.split(';'):
             logging.info('executing {0}'.format(s))
             cur.execute(s)
         # set up the representative

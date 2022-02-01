@@ -26,16 +26,16 @@ class Senate:
         con = sqlite3.connect('senate.db')
         cur = con.cursor()
         sqlStatements = """
-        CREATE TABLE credential(pq text primary key, d text, e text) //
+        CREATE TABLE credential(pq text primary key, d text, e text);
 
         CREATE TABLE pal(pq text primary key, f text, e text,
-        local_pq text, local_e text) //
+        local_pq text, local_e text);
 
-        CREATE TABLE local(local_pq text primary key, pq text, d text) //
+        CREATE TABLE local(local_pq text primary key, pq text, d text) ;
 
         CREATE TABLE senator(pq text primary key, d text, e text, encrypted_pq text)
         """
-        for s in sqlStatements.split('//'):
+        for s in sqlStatements.split(';'):
             logging.info('executing {0}'.format(s))
             cur.execute(s)
         # senate keys
