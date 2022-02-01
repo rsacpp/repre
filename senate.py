@@ -30,12 +30,27 @@ class Senate:
         cur.execute('''
         CREATE TABLE local(local_pq text primary key, pq text, d text)
         ''')
-
+        # table3: senator
+        cur.execute('''
+        CREATE TABLE senator(pq text primary key, d text, e text, encrypted_pq text)
+        ''')
         # senate keys
         senatePq, senateD = goorsa.generateNumbers(3072, '10001')[:2]
         cur.execute("""
         insert into credential(pq, d, e) values('{0}', '{1}', '{2}')
         """.format(senatePq, senateD, '10001'))
+
+        # senator keys
+        senatorPq, senatorD, senatorF = goorsa.generateNumbers(2048, '30001')
+        cur.execute("""
+        insert into pal(pq, f, e, local_pq, local_e)
+        values('{0}', '{1}', '30001', '', '10001')
+        """.format(senatorPq, senatorF))
+        encryptedSenatorPq = goorsa.calc(senatePq, senateD, senatorPq)
+        cur.execute("""
+        insert into senator(pq, d, e, encrypted_pq) values('{0}', '{1}', '30001', '{2}')
+        """.format(senatorPq, senatorD, encryptedSenatorPq))
+
         con.commit()
         con.close()
 
@@ -60,11 +75,19 @@ class Senate:
         encryptedD = goorsa.calc(local_pq, '10001', dKey)
         # senate private sign
         encryptedD = goorsa.calc(senatePq, senateD, encryptedD)
+
         # local_pq for retrieval
         self.cur.execute("""
         insert into local(pq, d, local_pq) values ('{0}', '{1}', '{2}')
         """.format(encryptedPq, encryptedD, local_pq))
         self.con.commit()
+
+    def fetchSenatorPq():
+        self.cur.execute("""
+        select encrypted_pq from senator
+        """)
+        [senatorPq] = self.cur.fetchone()
+        return senatorPq
 
     def fetchID(self, local_pq):
         # encrypted*
@@ -75,7 +98,6 @@ class Senate:
         [encryptedPq, encryptedD] = self.cur.fetchone()
         if not encryptedPq:
             return ''
-
         # SenatePQ
         stmt = """select pq from credential"""
         self.cur.execute(stmt)
@@ -87,6 +109,14 @@ class Senate:
 
 
 class SenateHandler(socketserver.BaseRequestHandler):
+    def sendout(self, output):
+        logging.debug('output = {0}'.format(output))
+        length = len(output)
+        # send the length
+        self.request.send(bytes('{:08}'.format(length), 'utf-8'))
+        # send the payload
+        self.request.send(bytes(output, 'utf-8'))
+
     def handle(self):
         length = int(str(self.request.recv(8).strip(), 'utf-8'))
         payload = str(self.request.recv(length).strip(), 'utf-8')
@@ -98,12 +128,10 @@ class SenateHandler(socketserver.BaseRequestHandler):
         # return the new id
         if code == 'FetchID':
             output = senate.fetchID(arg)
-            logging.debug('output = {0}'.format(output))
-            length = len(output)
-            # send the length
-            self.request.send(bytes('{:08}'.format(length), 'utf-8'))
-            # send the payload
-            self.request.send(bytes(output, 'utf-8'))
+            self.sendout(output)
+        if code == 'FetchSenatorPq':
+            output = senate.fetchSenatorPq()
+            self.sendout(output)
         if code == 'Proposal':
             pass
         if code == 'RawBlock':
