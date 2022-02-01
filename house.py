@@ -9,31 +9,31 @@ from subprocess import Popen, PIPE
 import logging
 import goorsa
 
+
 class House:
     def bootstrap(self):
         con = sqlite3.connect('house.db')
         cur = con.cursor()
-        cur.execute("""
+        statements = """
         CREATE TABLE block(sha256 text primary key, raw text, nonce text, final text, chain text, seq bigint,
-        transaction_count bigint, f_count bigint)
-        """)
-        cur.execute("""
-        CREATE TABLE chain(sha256 text primary key, refer text, refer_seq bigint, block_count, transaction_count bigint, f_count bigint)
-        """)
-        cur.execute("""
-        CREATE TABLE transaction(sha256 text primary key, verdict text, proposal text, raw, transaction_refer , transaction_refer)
-        """)
-        cur.execute("""
-        CREATE TABLE runtime(runtimepq text primary key, runtimed text, runtimee text,
+        transaction_count bigint, f_count bigint) //
+        CREATE TABLE chain(sha256 text primary key, refer text, refer_seq bigint, block_count bigint, transaction_count bigint, f_count bigint)
+        //
+        CREATE TABLE transaction(sha256 text primary key, verdict text, proposal text, raw text, block_refer text, transaction_refer text)
+        //
+        CREATE TABLE representative(runtime_pq text primary key, runtime_d text, runtime_e text, senator_pq text,
         clique3pq text, clique3d text, clique3e text)
-        """)
+        """
+        for s in statements.split('//'):
+            logging.info('executing {0}'.format(s))
+            cur.execute(s)
         # set up the representative
-        runtimePq, runtimeD, e, clique3Pq, clique3d, clique3e = goorsa.requestID('senate.goorsa.com')
+        senatePq, runtimePq, runtimeD, e, clique3pq, clique3d, clique3e = goorsa.requestID('senate.goorsa.com')
         cur.execute("""
-        INSERT INTO runtime(runtimepq, runtimed, runtimee, clique3pq, clique3d, clique3e)
+        INSERT INTO representative(runtime_pq, runtime_d, runtime_e, clique3pq, clique3d, clique3e)
         values('{0}', '{1}', '{2}', '{3}', '{4}', '{5}')
         """.format(runtimePq, runtimeD, e, clique3Pq, clique3d, clique3e))
-        self.representativePq = clique3Pq
+        self.clique3pq = clique3pq
 
         # genesis block 'In God We Trust'
         raw = 'In God We Trust[representative:{0}]'.format(self.representative())
@@ -72,7 +72,7 @@ class House:
 
     def fetchBlock(seq):
         self.fetchBlock(self.currentChain, seq)
-        
+
     def fetchBlock(chain, seq):
         self.cur.execute("""
         select refer_seq, refer from chain where sha256='{0}'
@@ -101,7 +101,6 @@ class House:
             return False
         if not goorsa.verify(sha256, nonce, final):
             return False
-        
 
     def applyBlock(block):
         bSha256, bRaw, bNonce, bFinal = block
@@ -109,9 +108,8 @@ class House:
         if blockRefer == self.blockPtr:
             if self.sanityCheck(block):
                 # update the chain& block
-                
-        
-        
+                pass
+
     def __init__(self, bootstrap):
         if bootstrap:
             self.bootstrap()
@@ -120,7 +118,7 @@ class House:
         self.loadChain()
         while True:
             # provision the chain with proposal/verdicts
-            
+
 
 if __name__ == '__main__':
     fmt0 = "%(name)s %(levelname)s %(asctime)-15s %(process)d/\

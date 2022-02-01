@@ -51,7 +51,7 @@ def mining(dat, tag):
 
 
 def verify(dat, nonce, final):
-    cmd = './mining' dat, nonce
+    cmd = './mining', dat, nonce
     with Popen(cmd, stdout=PIPE) as p:
         output = p.stdout.read().strip()
         return output == final
@@ -70,7 +70,7 @@ def newRuntime(bits):
     return generateNumbers(bits, '10001')[:2]
 
 
-def requstID(senate='senate.goorsa.com'):
+def requestID(senate='senate.goorsa.com'):
     runtimePq, runtimeD = newRuntime(2560)
     dat = 'RequestID==>{0}'.format(runtimePq)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -100,5 +100,19 @@ def requstID(senate='senate.goorsa.com'):
 
                 encryptedD = calc(senatePq, '10001', encryptedD)
                 clique3d = calc(runtimePq, runtimeD, encryptedD)
-                # total 6 numbers, first 3 for runtime, later 3 for clique3
-                return runtimePq, runtimeD, '10001', clique3pq, clique3d, '30001'
+                # total 7 numbers, (2,3,4) for runtime, later 3 for clique3
+                return senatePq, runtimePq, runtimeD, '10001', clique3pq, clique3d, '30001'
+
+
+def requestSenatorPq(senate='senate.googrsa.com'):
+    dat = 'requestSenatorPq'
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.connect((senate, 12821))
+        length = len(dat)
+        sock.send(bytes('{:08}'.format(length), 'utf-8'))
+        sock.send(bytes(dat, 'utf-8'))
+        length = int(str(sock.recv(8).strip(), 'utf-8'))
+        payload = str(sock.recv(length).strip(), 'utf-8')
+        [senatePq, senatorPq] = payload.split('||')
+        senatorPq = calc(senatePq, '10001', senatorPq)
+        return senatorPq

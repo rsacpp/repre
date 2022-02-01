@@ -13,6 +13,14 @@ class Senate:
             self.bootstrap()
         self.con = sqlite3.connect('senate.db')
         self.cur = self.con.cursor()
+        self.load()
+
+    def load(self):
+        # load senatePq, senateD, senatorPq
+        self.cur.execute('select pq, d from credential')
+        [self.senatePq, self.senateD] = self.cur.fetchone()
+        self.cur.execute('select pq from senator')
+        [self.senatorPq] = self.cur.fetchone()
 
     def bootstrap(self):
         con = sqlite3.connect('senate.db')
@@ -58,19 +66,16 @@ class Senate:
         values('{0}','{1}','{2}','{3}','{4}')
         """.format(pqKey, jgKey, '30001', local_pq, '10001'))
 
-        stmt = """select pq, d from credential"""
-        self.cur.execute(stmt)
-        [senatePq, senateD] = self.cur.fetchone()
         encryptedPq, encryptedD = '', ''
         # local public sign
         encryptedPq = goorsa.calc(local_pq, '10001', pqKey)
         # senate private sign
-        encryptedPq = goorsa.calc(senatePq, senateD, encryptedPq)
+        encryptedPq = goorsa.calc(self.senatePq, self.senateD, encryptedPq)
 
         # local public sign
         encryptedD = goorsa.calc(local_pq, '10001', dKey)
         # senate private sign
-        encryptedD = goorsa.calc(senatePq, senateD, encryptedD)
+        encryptedD = goorsa.calc(self.senatePq, self.senateD, encryptedD)
 
         # local_pq for retrieval
         self.cur.execute("""
@@ -78,12 +83,8 @@ class Senate:
         """.format(encryptedPq, encryptedD, local_pq))
         self.con.commit()
 
-    def fetchSenatorPq():
-        self.cur.execute("""
-        select encrypted_pq from senator
-        """)
-        [senatorPq] = self.cur.fetchone()
-        return senatorPq
+    def fetchSenatorPq(self):
+        return '{0}||{1}'.format(self.senatePq, self.senatorPq)
 
     def fetchID(self, local_pq):
         # encrypted*
@@ -93,15 +94,8 @@ class Senate:
         self.cur.execute(stmt)
         [encryptedPq, encryptedD] = self.cur.fetchone()
         if not encryptedPq:
-            return ''
-        # SenatePQ
-        stmt = """select pq from credential"""
-        self.cur.execute(stmt)
-        [senatePq] = self.cur.fetchone()
-        if senatePq:
-            return '^{0}||{1}||{2}$'.format(senatePq, encryptedPq, encryptedD)
-        else:
             return '^$'
+        return '^{0}||{1}||{2}$'.format(self.senatePq, encryptedPq, encryptedD)
 
 
 class SenateHandler(socketserver.BaseRequestHandler):
